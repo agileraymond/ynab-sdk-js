@@ -1,7 +1,7 @@
 import ynabApi = require("../../dist/index.js");
 import { ErrorResponse, BudgetSummary, MonthDetail } from "../../dist/api.js";
 import * as _ from "lodash";
-import { DateWithoutTime } from "./DateWithoutTime";
+import util = require("../../dist/utils");
 const Validator = require("swagger-model-validator");
 let validator = new Validator();
 
@@ -21,7 +21,8 @@ async function main() {
     const getBudgetsResponse = await ynab.budgets.getBudgets();
     const allBudgets = getBudgetsResponse.data.budgets;
 
-    const pollWaitTimeInMs = 5000;
+    // Poll once every 3 minutes
+    const pollWaitTimeInMs = 180000;
 
     if (allBudgets.length > 0) {
       let budgetToFetch: BudgetSummary = null;
@@ -47,12 +48,17 @@ async function main() {
       const categories = budgetContents.data.budget.categories;
 
       console.log(`Here is the budget data for the current month: `);
-      const currentMonth = DateWithoutTime.createForCurrentMonth();
+      const currentMonth = ynab.utils.convertISODateToDate(
+        ynab.utils.getCurrentMonthInISOFormat()
+      );
       const monthDetailForCurrentMonth = _.find(
         budgetContents.data.budget.months,
         (month: MonthDetail) => {
-          const monthDate = DateWithoutTime.createFromISOString(month.month);
-          if (monthDate.equalsByMonth(currentMonth)) {
+          const monthDate = ynab.utils.convertISODateToDate(month.month);
+          if (
+            currentMonth.getUTCMonth() == monthDate.getUTCMonth() &&
+            currentMonth.getUTCFullYear() == monthDate.getUTCFullYear()
+          ) {
             return true;
           }
         }
